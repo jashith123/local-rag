@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Uploaded documents (keep the folder, ignore its contents)
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+backend/storage/documents.json
+
+# Derived data — rebuildable from the uploads via scripts/reindex.py
+backend/storage/chunks/
+backend/storage/qdrant/
+
+# Docker
+docker-compose.override.yml
+
+# Browser-automation artifacts (page snapshots, console logs)
+.playwright-mcp/

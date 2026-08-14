@@ -1,0 +1,27 @@
+# Qdrant as a real server, for when Docker Desktop is installed.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# Then point the backend at it and restart uvicorn:
+#
+#   set QDRANT_URL=http://localhost:6333      (PowerShell: $env:QDRANT_URL="...")
+#
+# Without QDRANT_URL the backend runs Qdrant embedded in-process instead and
+# stores vectors under backend/storage/qdrant - no Docker required.
+#
+# Note: the two stores are separate. After switching, re-index with
+#   python scripts/reindex.py
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: enterprise-ai-qdrant
+    ports:
+      - "6333:6333"   # REST API and the web dashboard at http://localhost:6333/dashboard
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  qdrant_storage:
