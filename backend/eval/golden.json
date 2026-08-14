@@ -1,0 +1,52 @@
+[
+  {
+    "question": "why do chunks need to overlap",
+    "expect_text": "straddles a boundary still appears intact",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "what is the time complexity of BFS",
+    "expect_text": "total time complexity is therefore O(V + E)",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "what data structure does breadth first search use",
+    "expect_text": "queue",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "blood group",
+    "expect_text": "Blood Group",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "what is the space complexity",
+    "expect_text": "Space Complexity",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "where are vectors stored for fast similarity search",
+    "expect_text": "Qdrant",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "declaration about organ donation",
+    "expect_text": "organ",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "what does the licensing authority need for a learner licence",
+    "expect_text": "Learner",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "FIFO principle",
+    "expect_text": "First In First Out",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "how does retrieval reduce hallucination",
+    "expect_text": "reduces hallucination",
+    "expect_file": "RAG_Handbook"
+  }
+]

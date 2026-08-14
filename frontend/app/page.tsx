@@ -31,7 +31,12 @@ export default function DocumentsPage() {
 
       <UploadPanel onUploaded={() => setRefreshToken((n) => n + 1)} />
 
-      <DocumentList documents={documents} loading={loading} error={error} />
+      <DocumentList
+        documents={documents}
+        loading={loading}
+        error={error}
+        onDeleted={() => setRefreshToken((n) => n + 1)}
+      />
     </div>
   );
 }

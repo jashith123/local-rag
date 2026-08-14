@@ -12,20 +12,8 @@ import {
 } from "@/lib/api";
 import { useHistory } from "@/lib/history";
 import { HistoryPanel } from "./HistoryPanel";
+import { HitMeta } from "./HitMeta";
 import { Suggestions } from "./Suggestions";
-
-// Qdrant returns the top N by similarity no matter how poor the best match is,
-// so a query with no real answer still fills the page. Below this, results are
-// dimmed and labelled rather than hidden — the user should see that the tool
-// found nothing good, not be shown noise as though it were signal.
-const WEAK_MATCH = 0.2;
-const STRONG_MATCH = 0.45;
-
-function relevance(score: number) {
-  if (score >= STRONG_MATCH) return "strong";
-  if (score >= WEAK_MATCH) return "moderate";
-  return "weak";
-}
 
 export function SearchPanel() {
   const router = useRouter();
@@ -294,6 +282,11 @@ export function SearchPanel() {
             {entries.length > 0 && (
               <span className="hidden sm:inline">↑↓ recall</span>
             )}
+            {response && (
+              <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium dark:bg-zinc-800">
+                {response.mode}
+              </span>
+            )}
             {elapsed !== null && <span>{elapsed.toFixed(0)} ms</span>}
             {indexed !== null && <span>{indexed} chunks indexed</span>}
           </span>
@@ -331,60 +324,19 @@ export function SearchPanel() {
 
       {response && response.results.length > 0 && (
         <ol className="space-y-3">
-          {response.results.map((hit, rank) => {
-            const level = relevance(hit.score);
-            const weak = level === "weak";
-
-            return (
-              <li
-                key={`${hit.document_id}-${hit.chunk_index}`}
-                className={`rise rounded-xl bg-white p-4 ring-1 dark:bg-zinc-900 ${
-                  weak
-                    ? "opacity-60 ring-zinc-200/70 dark:ring-zinc-800/70"
-                    : "shadow-sm ring-zinc-200 dark:ring-zinc-800"
-                }`}
-              >
-                <div className="mb-2.5 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="grid h-5 w-5 place-items-center rounded bg-zinc-100 font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                    {rank + 1}
-                  </span>
-                  <span className="font-medium">{hit.original_filename}</span>
-                  <span className="text-zinc-500">chunk {hit.chunk_index}</span>
-
-                  <span className="ml-auto flex items-center gap-2">
-                    {/* The bar makes relative relevance obvious at a glance:
-                        a 0.55 beside a 0.09 shows the second is noise. */}
-                    <span className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
-                      <span
-                        className="block h-full rounded-full bg-zinc-900 dark:bg-zinc-100"
-                        style={{
-                          width: `${Math.max(0, Math.min(1, hit.score)) * 100}%`,
-                        }}
-                      />
-                    </span>
-                    <span className="w-10 text-right tabular-nums text-zinc-500">
-                      {hit.score.toFixed(3)}
-                    </span>
-                    <span
-                      className={`rounded-md px-1.5 py-0.5 font-medium ${
-                        level === "strong"
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                          : level === "moderate"
-                            ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                            : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-                      }`}
-                    >
-                      {level} match
-                    </span>
-                  </span>
-                </div>
-
-                <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                  {hit.text}
-                </p>
-              </li>
-            );
-          })}
+          {response.results.map((hit, rank) => (
+            <li
+              key={`${hit.document_id}-${hit.chunk_index}`}
+              className="rise rounded-xl bg-white p-4 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800"
+            >
+              <div className="mb-2.5">
+                <HitMeta hit={hit} rank={rank + 1} />
+              </div>
+              <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                {hit.text}
+              </p>
+            </li>
+          ))}
         </ol>
       )}
     </div>

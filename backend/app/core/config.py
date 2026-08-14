@@ -52,6 +52,16 @@ QDRANT_PATH = STORAGE_DIR / "qdrant"
 
 QDRANT_COLLECTION = "documents"
 
+# --- Retrieval ------------------------------------------------------------
+# "hybrid"  vector + BM25 fused by reciprocal rank (default)
+# "vector"  embeddings only — what this used to do
+# "keyword" BM25 only
+RETRIEVAL_MODE = os.environ.get("RETRIEVAL_MODE", "hybrid").strip().lower()
+
+# Reciprocal rank fusion constant. 60 is the value from the original paper and
+# the usual default; larger flattens the influence of top ranks.
+RRF_K = 60
+
 # --- Chat / answer generation ---------------------------------------------
 # "ollama" runs a local model: free, offline, no key. "anthropic" calls the
 # Claude API and needs ANTHROPIC_API_KEY.

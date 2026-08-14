@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { useConversations, type ChatTurn } from "@/lib/conversations";
 import { relativeTime } from "@/lib/history";
+import { HitMeta } from "./HitMeta";
 import { Suggestions } from "./Suggestions";
 
 // Claude Haiku 4.5 list pricing, per million tokens. Only applied when the
@@ -392,18 +393,10 @@ export function ChatPanel() {
                       className="scroll-mt-20 rounded-xl bg-white p-3 ring-1 ring-zinc-200 target:ring-2 target:ring-zinc-900 dark:bg-zinc-900 dark:ring-zinc-800 dark:target:ring-zinc-100"
                     >
                       <div className="mb-1.5 flex items-center gap-2 text-xs">
-                        <span className="grid h-5 w-5 place-items-center rounded bg-zinc-900 text-[10px] font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded bg-zinc-900 text-[10px] font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900">
                           {i + 1}
                         </span>
-                        <span className="font-medium">
-                          {hit.original_filename}
-                        </span>
-                        <span className="text-zinc-500">
-                          chunk {hit.chunk_index}
-                        </span>
-                        <span className="ml-auto tabular-nums text-zinc-500">
-                          {hit.score.toFixed(3)}
-                        </span>
+                        <HitMeta hit={hit} />
                       </div>
                       <p className="line-clamp-3 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
                         {hit.text}

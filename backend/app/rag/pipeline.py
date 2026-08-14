@@ -3,18 +3,33 @@ from pathlib import Path
 
 from app.core.config import CHUNKS_DIR
 from app.embeddings.embedder import embed_texts
-from app.rag.chunking import chunk_text
+from app.rag import bm25
+from app.rag.chunking import chunk_pages
 from app.services import document_store
 from app.services.pdf_service import extract_pages
 from app.vector_db import store as vector_store
 
 
-def _write_chunks(document_id: str, chunks: list[str]) -> Path:
+def _write_chunks(
+    document_id: str, original_filename: str, records: list[dict]
+) -> Path:
+    """Write the chunk file.
+
+    The filename is denormalised in here on purpose: the BM25 index is built by
+    reading these files, and a search result has to be able to say which
+    document it came from without a second lookup.
+    """
     CHUNKS_DIR.mkdir(parents=True, exist_ok=True)
     chunk_file = CHUNKS_DIR / f"{document_id}.json"
     payload = [
-        {"document_id": document_id, "chunk_index": index, "text": chunk}
-        for index, chunk in enumerate(chunks)
+        {
+            "document_id": document_id,
+            "original_filename": original_filename,
+            "chunk_index": index,
+            "page": record["page"],
+            "text": record["text"],
+        }
+        for index, record in enumerate(records)
     ]
     chunk_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return chunk_file
@@ -32,33 +47,36 @@ def process_document(document_id: str, file_path: Path) -> None:
 
     try:
         pages = extract_pages(file_path)
-        text = "\n\n".join(page for page in pages if page)
-        chunks = chunk_text(text)
-        _write_chunks(document_id, chunks)
+        # Chunk page by page so every chunk knows the page it came from, which
+        # is what makes a citation checkable.
+        records = chunk_pages(pages)
 
-        # Chunks on disk are the record; the vectors are the search index.
         document = document_store.get(document_id)
         original_filename = document.original_filename if document else "unknown"
-        vectors = embed_texts(chunks)
+        _write_chunks(document_id, original_filename, records)
+
+        texts = [record["text"] for record in records]
+        vectors = embed_texts(texts)
         vector_count = vector_store.index_chunks(
             document_id=document_id,
             original_filename=original_filename,
-            chunks=chunks,
-            vectors=vectors
+            records=records,
+            vectors=vectors,
         )
+
+        # The keyword index reads the chunk files, so it must be rebuilt now
+        # that there are new ones - otherwise search silently misses this
+        # document until the process restarts.
+        bm25.invalidate()
 
         document_store.update(
             document_id,
             status="processed",
             page_count=len(pages),
-            character_count=len(text),
-            chunk_count=len(chunks),
+            character_count=sum(len(text) for text in texts),
+            chunk_count=len(records),
             vector_count=vector_count,
-            error=None
+            error=None,
         )
     except Exception as exc:
-        document_store.update(
-            document_id,
-            status="failed",
-            error=str(exc)
-        )
+        document_store.update(document_id, status="failed", error=str(exc))

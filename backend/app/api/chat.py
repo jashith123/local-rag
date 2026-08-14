@@ -4,14 +4,13 @@ from typing import Iterator
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.core.config import CHAT_MIN_SCORE
-from app.embeddings.embedder import embed_query
+from app.core.config import RETRIEVAL_MODE
 from app.llm.base import LLMError
 from app.llm.provider import get_provider
 from app.rag.prompt import SYSTEM_PROMPT, build_user_message
+from app.rag.retrieval import retrieve as retrieve_passages
 from app.schemas.chat import ChatRequest, ChatResponse, ChatUsage
 from app.schemas.search import SearchHit
-from app.vector_db import store as vector_store
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -28,16 +27,20 @@ NO_CONTEXT_ANSWER = (
 def retrieve(request: ChatRequest) -> list[dict]:
     """Fetch the passages worth showing the model.
 
-    Dropping weak matches here matters: the model is told to ignore irrelevant
-    passages, but the surest way to stop it citing noise is not to send any.
+    Hybrid by default, so a question phrased in the document's own words is
+    caught by BM25 even when the embedding misses it.
+
+    No score threshold is applied here any more: fused reciprocal-rank scores
+    are on a different scale from cosine similarity (~0.03 vs ~0.5), so the old
+    cutoff would have discarded everything. Relevance is instead controlled by
+    how many passages we ask for.
     """
-    vector = embed_query(request.question)
-    hits = vector_store.search(
-        vector=vector,
+    return retrieve_passages(
+        query=request.question,
         limit=request.top_k,
         document_id=request.document_id,
+        mode=RETRIEVAL_MODE,
     )
-    return [hit for hit in hits if hit["score"] >= CHAT_MIN_SCORE]
 
 
 @router.get("/config")

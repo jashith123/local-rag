@@ -16,6 +16,9 @@ class DocumentMetadata(BaseModel):
     stored_filename: str
     content_type: str
     size: int
+    #: sha256 of the file bytes, used to reject a re-upload of the same file.
+    #: Optional so documents indexed before deduplication existed still load.
+    content_hash: Optional[str] = None
     uploaded_at: str
     status: DocumentStatus = "uploaded"
     page_count: Optional[int] = None

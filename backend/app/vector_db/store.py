@@ -76,11 +76,11 @@ def get_client() -> QdrantClient:
 def index_chunks(
     document_id: str,
     original_filename: str,
-    chunks: list[str],
+    records: list[dict],
     vectors: list[list[float]]
 ) -> int:
     """Store one point per chunk: the vector plus enough payload to cite it."""
-    if not chunks:
+    if not records:
         return 0
 
     points = [
@@ -91,12 +91,15 @@ def index_chunks(
                 "document_id": document_id,
                 "original_filename": original_filename,
                 "chunk_index": index,
+                # The page makes a result citable as "page 4" rather than the
+                # meaningless-to-a-reader "chunk 7".
+                "page": record["page"],
                 # The text rides along with the vector so a search result can be
                 # shown to the user without a second lookup on disk.
-                "text": text
+                "text": record["text"]
             }
         )
-        for index, (text, vector) in enumerate(zip(chunks, vectors))
+        for index, (record, vector) in enumerate(zip(records, vectors))
     ]
 
     get_client().upsert(collection_name=QDRANT_COLLECTION, points=points)
@@ -133,6 +136,8 @@ def search(
             "document_id": point.payload["document_id"],
             "original_filename": point.payload["original_filename"],
             "chunk_index": point.payload["chunk_index"],
+            # Documents indexed before page tracking existed have no page.
+            "page": point.payload.get("page"),
             "text": point.payload["text"]
         }
         for point in response.points

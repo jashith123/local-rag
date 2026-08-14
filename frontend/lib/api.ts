@@ -28,18 +28,32 @@ export interface DocumentListResponse {
   documents: DocumentMetadata[];
 }
 
+export type RetrievalMode = "hybrid" | "vector" | "keyword";
+
 export interface SearchHit {
+  /** In hybrid mode this is the fused RRF score — an ordering, not a
+   *  similarity. Use vector_score / keyword_score for anything human-facing. */
   score: number;
   document_id: string;
   original_filename: string;
   chunk_index: number;
+  page: number | null;
   text: string;
+  matched_by: string[];
+  vector_score: number | null;
+  keyword_score: number | null;
 }
 
 export interface SearchResponse {
   query: string;
+  mode: RetrievalMode;
   count: number;
   results: SearchHit[];
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  const response = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+  if (!response.ok) throw new ApiError(await readError(response), response.status);
 }
 
 /** Thrown for any non-2xx response, carrying the backend's own message. */

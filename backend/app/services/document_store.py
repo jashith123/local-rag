@@ -57,6 +57,24 @@ def get(document_id: str) -> Optional[DocumentMetadata]:
     return DocumentMetadata(**record) if record else None
 
 
+def find_by_hash(content_hash: str) -> Optional[DocumentMetadata]:
+    """Find an already-indexed document with identical bytes, if any."""
+    for record in _read_all().values():
+        if record.get("content_hash") == content_hash:
+            return DocumentMetadata(**record)
+    return None
+
+
+def delete(document_id: str) -> bool:
+    with _lock:
+        records = _read_all()
+        if document_id not in records:
+            return False
+        del records[document_id]
+        _write_all(records)
+        return True
+
+
 def list_all() -> list[DocumentMetadata]:
     records = _read_all()
     documents = [DocumentMetadata(**record) for record in records.values()]

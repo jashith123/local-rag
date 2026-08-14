@@ -32,9 +32,10 @@ def build_context(hits: list[dict]) -> str:
     """Render retrieved chunks as numbered passages the model can cite."""
     blocks = []
     for index, hit in enumerate(hits, start=1):
+        page = hit.get("page")
+        where = f"page {page}" if page else f"chunk {hit['chunk_index']}"
         blocks.append(
-            f"[{index}] (source: {hit['original_filename']}, "
-            f"chunk {hit['chunk_index']})\n{hit['text']}"
+            f"[{index}] (source: {hit['original_filename']}, {where})\n{hit['text']}"
         )
     return "\n\n".join(blocks)
 

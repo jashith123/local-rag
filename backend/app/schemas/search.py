@@ -1,6 +1,8 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
+
+RetrievalMode = Literal["hybrid", "vector", "keyword"]
 
 
 class SearchRequest(BaseModel):
@@ -10,19 +12,31 @@ class SearchRequest(BaseModel):
         None,
         description="Restrict the search to a single document"
     )
+    mode: Optional[RetrievalMode] = Field(
+        None,
+        description="Override the configured retrieval mode (hybrid by default)"
+    )
 
 
 class SearchHit(BaseModel):
-    # 1.0 is an exact match. With cosine distance on normalized vectors,
-    # anything above ~0.5 is usually genuinely related.
+    # In hybrid mode this is the fused reciprocal-rank score, which is small
+    # (~0.03) and only meaningful as an ordering. The per-retriever scores
+    # below are the interpretable ones.
     score: float
     document_id: str
     original_filename: str
     chunk_index: int
+    page: Optional[int] = None
     text: str
+
+    #: Which retrievers found this passage — ["vector"], ["keyword"] or both.
+    matched_by: list[str] = Field(default_factory=list)
+    vector_score: Optional[float] = None
+    keyword_score: Optional[float] = None
 
 
 class SearchResponse(BaseModel):
     query: str
+    mode: RetrievalMode
     count: int
     results: list[SearchHit]

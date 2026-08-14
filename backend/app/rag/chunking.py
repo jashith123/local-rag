@@ -56,3 +56,28 @@ def chunk_text(
         start = max(end - overlap, start + 1)
 
     return chunks
+
+
+def chunk_pages(
+    pages: list[str],
+    chunk_size: int = CHUNK_SIZE,
+    overlap: int = CHUNK_OVERLAP
+) -> list[dict]:
+    """Chunk a document while keeping track of which page each chunk came from.
+
+    Chunking the whole document as one string loses the page boundaries, and a
+    citation that says "page 4" is far more checkable than one that says
+    "chunk 7". Each page is chunked on its own, so a chunk never straddles two
+    pages and its page number is always exact.
+
+    The tradeoff is that a passage spanning a page break gets split, which the
+    overlap can't repair across pages. That is worth it: page-accurate
+    citations are the thing a reader can actually verify.
+    """
+    records: list[dict] = []
+
+    for page_number, page_text in enumerate(pages, start=1):
+        for chunk in chunk_text(page_text, chunk_size, overlap):
+            records.append({"text": chunk, "page": page_number})
+
+    return records
