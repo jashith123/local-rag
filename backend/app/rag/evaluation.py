@@ -51,6 +51,7 @@ def evaluate(
     cases: list[GoldenCase],
     mode: Mode = "hybrid",
     k: int = 5,
+    rerank: Optional[bool] = None,
     retriever: Optional[Callable[..., list[dict]]] = None,
 ) -> Result:
     retriever = retriever or retrieve
@@ -60,7 +61,7 @@ def evaluate(
     misses: list[str] = []
 
     for case in cases:
-        results = retriever(query=case.question, limit=k, mode=mode)
+        results = retriever(query=case.question, limit=k, mode=mode, rerank=rerank)
 
         rank = next(
             (i for i, hit in enumerate(results, start=1) if _matches(hit, case)),
@@ -90,8 +91,18 @@ def evaluate(
 
 
 def load_golden(path) -> list[GoldenCase]:
+    """Load the golden set, ignoring any `_`-prefixed annotation keys.
+
+    The file is meant to be edited by hand, so it should tolerate a `_comment`
+    sitting next to a real case without blowing up the loader.
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
-    return [GoldenCase(**case) for case in data]
+    return [
+        GoldenCase(
+            **{key: value for key, value in case.items() if not key.startswith("_")}
+        )
+        for case in data
+    ]
 
 
 def corpus_is_indexed() -> bool:

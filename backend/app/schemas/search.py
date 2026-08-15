@@ -33,10 +33,14 @@ class SearchHit(BaseModel):
     matched_by: list[str] = Field(default_factory=list)
     vector_score: Optional[float] = None
     keyword_score: Optional[float] = None
+    #: Cross-encoder relevance, present only when reranking ran. Unbounded
+    #: logit: positive is relevant, negative is not.
+    rerank_score: Optional[float] = None
 
 
 class SearchResponse(BaseModel):
     query: str
     mode: RetrievalMode
+    reranked: bool
     count: int
     results: list[SearchHit]

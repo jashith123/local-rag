@@ -285,6 +285,7 @@ export function SearchPanel() {
             {response && (
               <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-medium dark:bg-zinc-800">
                 {response.mode}
+                {response.reranked && " + rerank"}
               </span>
             )}
             {elapsed !== null && <span>{elapsed.toFixed(0)} ms</span>}

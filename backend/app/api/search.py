@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.core.config import RETRIEVAL_MODE
+from app.core.config import RERANK_ENABLED, RETRIEVAL_MODE
 from app.rag.retrieval import retrieve
 from app.schemas.search import SearchHit, SearchRequest, SearchResponse
 from app.vector_db import store as vector_store
@@ -27,6 +27,7 @@ def semantic_search(request: SearchRequest):
     return SearchResponse(
         query=request.query,
         mode=mode,
+        reranked=RERANK_ENABLED,
         count=len(hits),
         results=[SearchHit(**hit) for hit in hits],
     )
@@ -40,4 +41,5 @@ def search_stats():
         "indexed_chunks": vector_store.count(),
         "keyword_index_size": len(bm25.get_index().documents),
         "mode": RETRIEVAL_MODE,
+        "reranked": RERANK_ENABLED,
     }

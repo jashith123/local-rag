@@ -62,6 +62,21 @@ RETRIEVAL_MODE = os.environ.get("RETRIEVAL_MODE", "hybrid").strip().lower()
 # the usual default; larger flattens the influence of top ranks.
 RRF_K = 60
 
+# Reranking. A cross-encoder re-scores the shortlist that retrieval produced.
+# Costs a few hundred ms on CPU, so it is opt-out rather than always-on.
+RERANK_ENABLED = os.environ.get("RERANK_ENABLED", "true").strip().lower() in {
+    "1", "true", "yes"
+}
+
+# ~80 MB, downloaded once. Trained on MS MARCO query/passage relevance.
+RERANK_MODEL = os.environ.get(
+    "RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
+)
+
+# How many candidates to hand the reranker. Too few and it has nothing to fix;
+# too many and it gets slow for no gain.
+RERANK_CANDIDATES = int(os.environ.get("RERANK_CANDIDATES", "20"))
+
 # --- Chat / answer generation ---------------------------------------------
 # "ollama" runs a local model: free, offline, no key. "anthropic" calls the
 # Claude API and needs ANTHROPIC_API_KEY.

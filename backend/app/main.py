@@ -20,6 +20,14 @@ def _warm_embedding_model() -> None:
         from app.embeddings.embedder import get_model
 
         get_model()
+
+        # The reranker is a second model with the same cold-start problem.
+        from app.core.config import RERANK_ENABLED
+
+        if RERANK_ENABLED:
+            from app.rag.reranker import get_model as get_reranker
+
+            get_reranker()
     except Exception:
         # Never stop the API from starting over this - the first search will
         # just pay the load cost itself.

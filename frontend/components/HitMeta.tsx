@@ -55,13 +55,25 @@ export function HitMeta({
           </>
         )}
 
-        {hit.vector_score !== null && (
+        {/* When reranking ran, its score is what determined the order on
+            screen, so it is the honest number to show. */}
+        {hit.rerank_score !== null ? (
           <span
             className="tabular-nums text-zinc-500"
-            title="Cosine similarity from the embedding model"
+            title="Cross-encoder relevance — the model read the query against this passage. Positive is relevant."
           >
-            {hit.vector_score.toFixed(3)}
+            {hit.rerank_score > 0 ? "+" : ""}
+            {hit.rerank_score.toFixed(2)}
           </span>
+        ) : (
+          hit.vector_score !== null && (
+            <span
+              className="tabular-nums text-zinc-500"
+              title="Cosine similarity from the embedding model"
+            >
+              {hit.vector_score.toFixed(3)}
+            </span>
+          )
         )}
       </span>
     </div>

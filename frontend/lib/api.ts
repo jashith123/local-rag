@@ -42,11 +42,14 @@ export interface SearchHit {
   matched_by: string[];
   vector_score: number | null;
   keyword_score: number | null;
+  /** Cross-encoder logit; present only when reranking ran. */
+  rerank_score: number | null;
 }
 
 export interface SearchResponse {
   query: string;
   mode: RetrievalMode;
+  reranked: boolean;
   count: number;
   results: SearchHit[];
 }

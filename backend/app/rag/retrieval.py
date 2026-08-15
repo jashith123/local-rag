@@ -1,8 +1,9 @@
 from typing import Literal, Optional
 
-from app.core.config import RRF_K
+from app.core.config import RERANK_CANDIDATES, RERANK_ENABLED, RRF_K
 from app.embeddings.embedder import embed_query
 from app.rag import bm25
+from app.rag.reranker import rerank as rerank_hits
 from app.vector_db import store as vector_store
 
 Mode = Literal["hybrid", "vector", "keyword"]
@@ -87,29 +88,41 @@ def retrieve(
     limit: int = 5,
     document_id: Optional[str] = None,
     mode: Mode = "hybrid",
+    rerank: Optional[bool] = None,
 ) -> list[dict]:
     """Retrieve passages for a query.
+
+    Two stages. Retrieval casts a wide, cheap net; reranking then re-orders the
+    shortlist with a model that actually reads the query against each passage.
+    Retrieval decides what is *considered*; reranking decides what is *shown*.
 
     Each retriever is asked for more than `limit` before fusion, because a
     passage ranked 8th by one and 2nd by the other should still be able to win
     - and it can only do that if both lists are deep enough to contain it.
     """
-    depth = max(limit * 4, 20)
+    use_rerank = RERANK_ENABLED if rerank is None else rerank
+    # Reranking is only worth anything if it is given more candidates than it
+    # will return, so widen the shortlist when it is on.
+    depth = max(RERANK_CANDIDATES, limit * 4, 20) if use_rerank else max(limit * 4, 20)
+    shortlist = depth if use_rerank else limit
 
     if mode == "vector":
         hits = vector_store.search(
-            vector=embed_query(query), limit=limit, document_id=document_id
+            vector=embed_query(query), limit=shortlist, document_id=document_id
         )
-        return [{**h, "matched_by": ["vector"], "vector_score": h["score"],
-                 "keyword_score": None} for h in hits]
+        results = [{**h, "matched_by": ["vector"], "vector_score": h["score"],
+                    "keyword_score": None} for h in hits]
+    elif mode == "keyword":
+        hits = _keyword_search(query, shortlist, document_id)
+        results = [{**h, "matched_by": ["keyword"], "keyword_score": h["score"],
+                    "vector_score": None} for h in hits]
+    else:
+        vector_hits = vector_store.search(
+            vector=embed_query(query), limit=depth, document_id=document_id
+        )
+        keyword_hits = _keyword_search(query, depth, document_id)
+        results = _fuse(vector_hits, keyword_hits, shortlist)
 
-    if mode == "keyword":
-        hits = _keyword_search(query, limit, document_id)
-        return [{**h, "matched_by": ["keyword"], "keyword_score": h["score"],
-                 "vector_score": None} for h in hits]
-
-    vector_hits = vector_store.search(
-        vector=embed_query(query), limit=depth, document_id=document_id
-    )
-    keyword_hits = _keyword_search(query, depth, document_id)
-    return _fuse(vector_hits, keyword_hits, limit)
+    if use_rerank:
+        return rerank_hits(query, results, limit)
+    return results[:limit]

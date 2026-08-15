@@ -48,5 +48,83 @@
     "question": "how does retrieval reduce hallucination",
     "expect_text": "reduces hallucination",
     "expect_file": "RAG_Handbook"
+  },
+
+  {
+    "_comment": "Below: paraphrased away from the source wording, so lexical overlap is low and ranking is genuinely contested.",
+
+    "question": "does the traversal ever revisit a node it has already seen",
+    "expect_text": "visited set",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "what stops the algorithm looping forever on a cycle",
+    "expect_text": "cyclic graph would make the traversal loop forever",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "how is the graph represented in the program",
+    "expect_text": "adjacency list",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "in what order are nodes explored",
+    "expect_text": "level by level",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "real world uses for this traversal",
+    "expect_text": "Applications",
+    "expect_file": "Experiment_1_BFS"
+  },
+  {
+    "question": "why can't a long report become a single vector",
+    "expect_text": "limited number of tokens",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "what is the downside of making passages very small",
+    "expect_text": "lose context",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "what gets stored next to each vector so a result can be traced back",
+    "expect_text": "payload",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "what are the stages of the pipeline",
+    "expect_text": "ingestion, chunking, embedding",
+    "expect_file": "RAG_Handbook"
+  },
+  {
+    "question": "what proof of where I live must I attach",
+    "expect_text": "Address",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "who signs if the applicant is under age",
+    "expect_text": "parent",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "which act governs disqualification from holding a licence",
+    "expect_text": "Motor Vehicles Act",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "vehicles used for farming",
+    "expect_text": "Agricultural tractor",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "heavy machinery categories not covered elsewhere",
+    "expect_text": "Excavator",
+    "expect_file": "applicationform"
+  },
+  {
+    "question": "how do I tell them my address changed",
+    "expect_text": "Change",
+    "expect_file": "applicationform"
   }
 ]
