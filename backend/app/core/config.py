@@ -82,10 +82,16 @@ RERANK_CANDIDATES = int(os.environ.get("RERANK_CANDIDATES", "20"))
 # Claude API and needs ANTHROPIC_API_KEY.
 CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "ollama").strip().lower()
 
-# Ollama. qwen2.5:3b gave the most accurate, best-cited answers of the locally
-# installed models; llama3.2:3b is roughly twice as fast but more verbose.
+# Ollama. qwen3:4b-instruct measured best on this project's own prompt: same
+# speed as qwen2.5:3b, fuller answers, and it declines an unanswerable question
+# without inventing a citation, which qwen2.5:3b does.
+#
+# Deliberately the *instruct* tag, not plain qwen3:4b. The thinking variants
+# reason before every answer - 2.5-9k characters of it - which made them 6-20x
+# slower for no gain on a task that is "read five passages and cite them".
+# Neither `think: false` nor a `/no_think` suffix suppressed it.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434").rstrip("/")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b-instruct")
 
 # Five retrieved passages plus the system prompt run to roughly 2k tokens.
 # Ollama's default context would quietly truncate that, which reads as the
