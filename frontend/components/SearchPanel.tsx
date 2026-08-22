@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { useHistory } from "@/lib/history";
 import { HistoryPanel } from "./HistoryPanel";
+import { Highlight } from "./Highlight";
 import { HitMeta } from "./HitMeta";
 import { Suggestions } from "./Suggestions";
 
@@ -334,7 +335,7 @@ export function SearchPanel() {
                 <HitMeta hit={hit} rank={rank + 1} />
               </div>
               <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
-                {hit.text}
+                <Highlight text={hit.text} query={query} />
               </p>
             </li>
           ))}

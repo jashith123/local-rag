@@ -1,9 +1,10 @@
 import hashlib
-import shutil
+import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from fastapi.responses import FileResponse
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -160,6 +161,72 @@ def get_document(document_id: str):
             detail=f"No document with id {document_id}"
         )
     return document
+
+
+@router.get("/{document_id}/chunks")
+def document_chunks(document_id: str):
+    """The passages this document was split into.
+
+    Useful in the UI, and more useful when retrieval misbehaves: it is the only
+    way to see what the extractor actually produced, as opposed to what the PDF
+    looks like to a human.
+    """
+    document = document_store.get(document_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No document with id {document_id}"
+        )
+
+    chunk_file = CHUNKS_DIR / f"{document_id}.json"
+    if not chunk_file.exists():
+        return {"document_id": document_id, "count": 0, "chunks": []}
+
+    try:
+        records = json.loads(chunk_file.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not read the chunk file: {exc}"
+        ) from exc
+
+    return {
+        "document_id": document_id,
+        "original_filename": document.original_filename,
+        "count": len(records),
+        "chunks": records,
+    }
+
+
+@router.get("/{document_id}/file")
+def document_file(document_id: str):
+    """Serve the original PDF, so a citation can link to the page it came from.
+
+    Inline rather than as an attachment: the point is to open the viewer at
+    #page=N, not to download it again.
+    """
+    document = document_store.get(document_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No document with id {document_id}"
+        )
+
+    path = UPLOAD_DIRECTORY / document.stored_filename
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The stored file is missing from disk"
+        )
+
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition":
+                f'inline; filename="{document.original_filename}"'
+        },
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

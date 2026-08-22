@@ -54,6 +54,24 @@ export interface SearchResponse {
   results: SearchHit[];
 }
 
+export interface DocumentChunk {
+  document_id: string;
+  original_filename: string;
+  chunk_index: number;
+  page: number | null;
+  text: string;
+}
+
+export function documentChunks(id: string): Promise<{
+  count: number;
+  chunks: DocumentChunk[];
+}> {
+  return request<{ count: number; chunks: DocumentChunk[] }>(
+    `/documents/${id}/chunks`,
+    { cache: "no-store" },
+  );
+}
+
 export async function deleteDocument(id: string): Promise<void> {
   const response = await fetch(`/api/documents/${id}`, { method: "DELETE" });
   if (!response.ok) throw new ApiError(await readError(response), response.status);

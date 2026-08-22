@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ApiError, deleteDocument, formatBytes, type DocumentMetadata } from "@/lib/api";
+import { ChunkViewer } from "./ChunkViewer";
 import { StatusBadge } from "./StatusBadge";
 
 function SkeletonRows() {
@@ -40,6 +41,7 @@ export function DocumentList({
   error: string | null;
   onDeleted?: () => void;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -112,9 +114,15 @@ export function DocumentList({
         </thead>
         <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
           {documents.map((doc) => (
+            <Fragment key={doc.document_id}>
             <tr
-              key={doc.document_id}
-              className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+              onClick={() =>
+                setExpanded((id) =>
+                  id === doc.document_id ? null : doc.document_id,
+                )
+              }
+              className="cursor-pointer transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+              title="Show the chunks this was split into"
             >
               <td className="px-4 py-3">
                 <div className="flex items-start gap-3">
@@ -165,7 +173,10 @@ export function DocumentList({
               <td className="px-4 py-3 text-right">
                 <button
                   type="button"
-                  onClick={() => void remove(doc)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void remove(doc);
+                  }}
                   disabled={deleting === doc.document_id}
                   aria-label={`Delete ${doc.original_filename}`}
                   title="Delete document"
@@ -188,6 +199,17 @@ export function DocumentList({
                 </button>
               </td>
             </tr>
+            {expanded === doc.document_id && (
+              <tr>
+                <td colSpan={7} className="bg-zinc-50/60 p-0 dark:bg-zinc-950/60">
+                  <ChunkViewer
+                    documentId={doc.document_id}
+                    filename={doc.original_filename}
+                  />
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
         </tbody>
       </table>

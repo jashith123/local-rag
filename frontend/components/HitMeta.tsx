@@ -29,9 +29,21 @@ export function HitMeta({
         </span>
       )}
       <span className="font-medium">{hit.original_filename}</span>
-      <span className="text-zinc-500">
-        {hit.page ? `page ${hit.page}` : `chunk ${hit.chunk_index}`}
-      </span>
+      {hit.page ? (
+        // #page=N is understood by every built-in PDF viewer, so a citation
+        // opens the source at the exact page rather than at the front.
+        <a
+          href={`/api/documents/${hit.document_id}/file#page=${hit.page}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-zinc-500 underline decoration-dotted underline-offset-2 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+          title="Open the PDF at this page"
+        >
+          page {hit.page}
+        </a>
+      ) : (
+        <span className="text-zinc-500">chunk {hit.chunk_index}</span>
+      )}
 
       <span className="ml-auto flex items-center gap-1.5">
         {/* Both retrievers agreeing is the strongest signal available, so it
