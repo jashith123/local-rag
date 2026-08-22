@@ -4,43 +4,70 @@ from typing import Iterator
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from app.core.config import RETRIEVAL_MODE
-from app.llm.base import LLMError
+from app.core.config import CHAT_MIN_RERANK_SCORE, RETRIEVAL_MODE
+from app.llm.base import LLMError, Message
 from app.llm.provider import get_provider
 from app.rag.prompt import SYSTEM_PROMPT, build_user_message
+from app.rag.query_rewrite import rewrite
 from app.rag.retrieval import retrieve as retrieve_passages
 from app.schemas.chat import ChatRequest, ChatResponse, ChatUsage
 from app.schemas.search import SearchHit
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# Returned without calling the model at all. Small models handed an empty
-# context will still produce an answer, sometimes with invented citations —
-# qwen2.5:3b answered "the documents don't say [1] [2]" with no passages in
-# scope. Not asking is both cheaper and more truthful.
+# Returned without calling the model at all. Small models handed an empty or
+# irrelevant context still produce an answer, often with invented citations -
+# qwen3:4b-instruct answered "the documents do not provide information..."
+# followed by [1][2][3][4][5]. Not asking is cheaper and more truthful.
 NO_CONTEXT_ANSWER = (
     "I couldn't find anything relevant to that in the indexed documents. "
     "Try rewording the question, or upload a document that covers it."
 )
 
 
-def retrieve(request: ChatRequest) -> list[dict]:
+def _history(request: ChatRequest) -> list[Message]:
+    return [{"role": t.role, "content": t.content} for t in request.history]
+
+
+def retrieve(request: ChatRequest) -> tuple[list[dict], str]:
     """Fetch the passages worth showing the model.
 
-    Hybrid by default, so a question phrased in the document's own words is
-    caught by BM25 even when the embedding misses it.
+    Returns (passages, query_actually_searched). A follow-up is rewritten into
+    a standalone question first: the generator can resolve "it" from the
+    conversation, but the retriever only ever sees a string.
 
-    No score threshold is applied here any more: fused reciprocal-rank scores
-    are on a different scale from cosine similarity (~0.03 vs ~0.5), so the old
-    cutoff would have discarded everything. Relevance is instead controlled by
-    how many passages we ask for.
+    Passages the reranker scores below the relevance gate are dropped. The
+    model is told to ignore irrelevant passages, but the reliable way to stop
+    it citing noise is to not send any.
     """
-    return retrieve_passages(
-        query=request.question,
+    query, _ = rewrite(request.question, _history(request))
+
+    hits = retrieve_passages(
+        query=query,
         limit=request.top_k,
         document_id=request.document_id,
         mode=RETRIEVAL_MODE,
     )
+
+    relevant = [
+        hit
+        for hit in hits
+        if hit.get("rerank_score") is None
+        or hit["rerank_score"] >= CHAT_MIN_RERANK_SCORE
+    ]
+    return relevant, query
+
+
+def _messages(request: ChatRequest, hits: list[dict]) -> list[Message]:
+    """Conversation so far, then this question with its retrieved passages.
+
+    Only the current turn carries passages. Re-sending the context of every
+    previous turn would bury the question and blow past the context window.
+    """
+    return [
+        *_history(request),
+        {"role": "user", "content": build_user_message(request.question, hits)},
+    ]
 
 
 @router.get("/config")
@@ -58,7 +85,7 @@ def chat_config():
 def chat(request: ChatRequest):
     """Answer a question from the indexed documents. Non-streaming."""
     provider = get_provider()
-    hits = retrieve(request)
+    hits, query = retrieve(request)
 
     if not hits:
         return ChatResponse(
@@ -67,13 +94,12 @@ def chat(request: ChatRequest):
             sources=[],
             provider=provider.name,
             model=provider.model,
+            search_query=query,
             billed=provider.billed,
         )
 
     try:
-        answer, done = provider.complete(
-            SYSTEM_PROMPT, build_user_message(request.question, hits)
-        )
+        answer, done = provider.complete(SYSTEM_PROMPT, _messages(request, hits))
     except LLMError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
@@ -85,6 +111,7 @@ def chat(request: ChatRequest):
         sources=[SearchHit(**hit) for hit in hits],
         provider=provider.name,
         model=done["model"],
+        search_query=query,
         billed=provider.billed,
         usage=ChatUsage(**done["usage"]),
     )
@@ -105,7 +132,7 @@ def chat_stream(request: ChatRequest):
     def generate() -> Iterator[str]:
         try:
             provider = get_provider()
-            hits = retrieve(request)
+            hits, query = retrieve(request)
         except LLMError as exc:
             yield _sse("error", {"message": str(exc)})
             return
@@ -113,7 +140,7 @@ def chat_stream(request: ChatRequest):
             yield _sse("error", {"message": f"Retrieval failed: {exc}"})
             return
 
-        yield _sse("sources", {"sources": hits})
+        yield _sse("sources", {"sources": hits, "search_query": query})
 
         if not hits:
             yield _sse("delta", {"text": NO_CONTEXT_ANSWER})
@@ -123,20 +150,22 @@ def chat_stream(request: ChatRequest):
                     "provider": provider.name,
                     "model": provider.model,
                     "billed": provider.billed,
+                    "search_query": query,
                     "usage": {"input_tokens": 0, "output_tokens": 0},
                 },
             )
             return
 
-        user_message = build_user_message(request.question, hits)
-
         try:
-            for event, payload in provider.stream(SYSTEM_PROMPT, user_message):
+            for event, payload in provider.stream(
+                SYSTEM_PROMPT, _messages(request, hits)
+            ):
                 if event == "done":
                     payload = {
                         **payload,
                         "provider": provider.name,
                         "billed": provider.billed,
+                        "search_query": query,
                     }
                 yield _sse(event, payload)
         except LLMError as exc:

@@ -145,10 +145,27 @@ export function ChatPanel() {
           prev.map((t) => (t.id === id ? { ...t, ...change } : t)),
         );
 
+      // Everything asked and answered so far, so a follow-up like "how fast
+      // is it" has a referent. Capped: older turns rarely matter for
+      // resolving a pronoun and every one costs context.
+      const history = turns
+        .filter((t) => t.answer && !t.error)
+        .slice(-4)
+        .flatMap((t) => [
+          { role: "user" as const, content: t.question },
+          { role: "assistant" as const, content: t.answer },
+        ]);
+
       await streamChat(
-        { question: trimmed, top_k: 5, document_id: documentId || null },
         {
-          onSources: (sources) => update({ sources }),
+          question: trimmed,
+          history,
+          top_k: 5,
+          document_id: documentId || null,
+        },
+        {
+          onSources: (sources, searchQuery) =>
+            update({ sources, searchQuery }),
           onDelta: (delta) =>
             setTurns((prev) =>
               prev.map((t) =>
@@ -164,7 +181,7 @@ export function ChatPanel() {
       setStreamingId(null);
       setBusy(false);
     },
-    [busy, documentId],
+    [busy, documentId, turns],
   );
 
   const meta = turns.at(-1)?.done ?? config;
@@ -349,7 +366,17 @@ export function ChatPanel() {
               <span className="mt-0.5 text-xs font-medium uppercase tracking-wide text-zinc-400">
                 Q
               </span>
-              <p className="text-sm font-medium">{turn.question}</p>
+              <div>
+                <p className="text-sm font-medium">{turn.question}</p>
+                {turn.searchQuery &&
+                  turn.searchQuery.trim().toLowerCase() !==
+                    turn.question.trim().toLowerCase() && (
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      searched as{" "}
+                      <span className="italic">{turn.searchQuery}</span>
+                    </p>
+                  )}
+              </div>
             </div>
 
             {turn.error ? (

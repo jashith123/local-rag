@@ -110,6 +110,11 @@ CHAT_MAX_TOKENS = 2048
 # How many chunks to retrieve and hand to the model as context.
 CHAT_TOP_K = 5
 
-# Chunks below this similarity are dropped before they reach the prompt.
-# Feeding the model irrelevant passages invites it to use them.
-CHAT_MIN_SCORE = 0.15
+# Relevance gate on the reranker's score. Measured on this corpus, a passage
+# that answers the question scores around +1 while unrelated ones land near
+# -9; anything below this is not worth putting in front of the model.
+#
+# This is what stops a refusal carrying citations: rather than asking the model
+# to answer from five irrelevant passages and hoping it declines cleanly, the
+# question is answered as unanswerable without a model call at all.
+CHAT_MIN_RERANK_SCORE = float(os.environ.get("CHAT_MIN_RERANK_SCORE", "-5.0"))

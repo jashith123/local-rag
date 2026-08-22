@@ -165,6 +165,14 @@ export interface ChatDone {
   model: string;
   billed: boolean;
   usage: ChatUsage;
+  /** The standalone question actually searched — differs when a follow-up
+   *  like "how fast is it" had to be resolved against the conversation. */
+  search_query?: string;
+}
+
+export interface ChatTurnMessage {
+  role: "user" | "assistant";
+  content: string;
 }
 
 export interface ChatConfig {
@@ -174,7 +182,7 @@ export interface ChatConfig {
 }
 
 export interface ChatHandlers {
-  onSources: (sources: SearchHit[]) => void;
+  onSources: (sources: SearchHit[], searchQuery?: string) => void;
   onDelta: (text: string) => void;
   onDone: (info: ChatDone) => void;
   onError: (message: string) => void;
@@ -192,7 +200,12 @@ export function chatConfig(): Promise<ChatConfig> {
  * `error` event rather than an HTTP code.
  */
 export async function streamChat(
-  body: { question: string; top_k?: number; document_id?: string | null },
+  body: {
+    question: string;
+    history?: ChatTurnMessage[];
+    top_k?: number;
+    document_id?: string | null;
+  },
   handlers: ChatHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -254,7 +267,10 @@ export async function streamChat(
       }
 
       if (event === "sources") {
-        handlers.onSources((payload.sources ?? []) as SearchHit[]);
+        handlers.onSources(
+          (payload.sources ?? []) as SearchHit[],
+          payload.search_query as string | undefined,
+        );
       } else if (event === "delta") {
         handlers.onDelta(payload.text as string);
       } else if (event === "done") {

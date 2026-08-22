@@ -6,6 +6,9 @@ import type { ChatDone, SearchHit } from "./api";
 export interface ChatTurn {
   id: string;
   question: string;
+  /** Set when a follow-up was rewritten into a standalone question before
+   *  retrieval — shown so the resolution is visible, not magic. */
+  searchQuery?: string;
   answer: string;
   sources: SearchHit[];
   done: ChatDone | null;

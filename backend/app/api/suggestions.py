@@ -79,7 +79,10 @@ def _generate() -> list[str]:
             continue
 
         try:
-            answer, _ = get_provider().complete(SYSTEM, f"Passage:\n{passage}")
+            answer, _ = get_provider().complete(
+                SYSTEM,
+                [{"role": "user", "content": "Passage:\n" + passage}],
+            )
             questions.append(_clean(answer, document.original_filename))
         except (LLMError, Exception):
             # No model configured, or it failed - a filename-derived question

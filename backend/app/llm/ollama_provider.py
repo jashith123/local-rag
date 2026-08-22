@@ -9,7 +9,7 @@ from app.core.config import (
     OLLAMA_NUM_CTX,
     OLLAMA_URL
 )
-from app.llm.base import DoneInfo, LLMError
+from app.llm.base import DoneInfo, LLMError, Message
 
 # A 3B model on CPU is not fast; the whole answer can take half a minute.
 # Streaming hides most of that, but the client still needs a generous ceiling.
@@ -28,13 +28,10 @@ def _options() -> dict:
     }
 
 
-def _payload(system: str, user: str, stream: bool) -> dict:
+def _payload(system: str, messages: list, stream: bool) -> dict:
     return {
         "model": OLLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        "messages": [{"role": "system", "content": system}, *messages],
         "stream": stream,
         "options": _options(),
     }
@@ -73,12 +70,12 @@ class OllamaProvider:
     def __init__(self) -> None:
         self.model = OLLAMA_MODEL
 
-    def complete(self, system: str, user: str) -> tuple[str, DoneInfo]:
+    def complete(self, system: str, messages: list[Message]) -> tuple[str, DoneInfo]:
         try:
             with httpx.Client(timeout=_TIMEOUT) as client:
                 response = client.post(
                     f"{OLLAMA_URL}/api/chat",
-                    json=_payload(system, user, stream=False),
+                    json=_payload(system, messages, stream=False),
                 )
                 response.raise_for_status()
                 data = response.json()
@@ -90,13 +87,13 @@ class OllamaProvider:
             {"model": data.get("model", OLLAMA_MODEL), "usage": _usage(data)},
         )
 
-    def stream(self, system: str, user: str) -> Iterator[tuple[str, dict]]:
+    def stream(self, system: str, messages: list[Message]) -> Iterator[tuple[str, dict]]:
         try:
             with httpx.Client(timeout=_TIMEOUT) as client:
                 with client.stream(
                     "POST",
                     f"{OLLAMA_URL}/api/chat",
-                    json=_payload(system, user, stream=True),
+                    json=_payload(system, messages, stream=True),
                 ) as response:
                     response.raise_for_status()
 

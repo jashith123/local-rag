@@ -11,6 +11,12 @@ class DoneInfo(TypedDict):
     usage: Usage
 
 
+class Message(TypedDict):
+    #: "user" or "assistant"
+    role: str
+    content: str
+
+
 class LLMError(Exception):
     """Any provider failure, already phrased for the user."""
 
@@ -18,8 +24,9 @@ class LLMError(Exception):
 class LLMProvider(Protocol):
     """What the chat endpoint needs from a model backend.
 
-    Deliberately small: two calls, no provider types leaking out. Adding a
-    backend means implementing this, not touching the API layer.
+    Takes a message list rather than a single string so a conversation can be
+    replayed: a follow-up like "how fast is it" only makes sense with the
+    previous turns in front of the model.
     """
 
     name: str
@@ -27,11 +34,15 @@ class LLMProvider(Protocol):
     #: Whether calls cost money — the UI hides cost for local models.
     billed: bool
 
-    def complete(self, system: str, user: str) -> tuple[str, DoneInfo]:
+    def complete(
+        self, system: str, messages: list[Message]
+    ) -> tuple[str, DoneInfo]:
         """Return the whole answer at once."""
         ...
 
-    def stream(self, system: str, user: str) -> Iterator[tuple[str, dict]]:
+    def stream(
+        self, system: str, messages: list[Message]
+    ) -> Iterator[tuple[str, dict]]:
         """Yield ("delta", {"text": ...}) repeatedly, then ("done", DoneInfo).
 
         The tuples map straight onto the SSE events the frontend consumes.

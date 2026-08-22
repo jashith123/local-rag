@@ -4,7 +4,7 @@ from typing import Iterator
 import anthropic
 
 from app.core.config import ANTHROPIC_API_KEY, CHAT_MAX_TOKENS, CHAT_MODEL
-from app.llm.base import DoneInfo, LLMError
+from app.llm.base import DoneInfo, LLMError, Message
 
 _client: anthropic.Anthropic | None = None
 _lock = threading.Lock()
@@ -47,13 +47,13 @@ class AnthropicProvider:
     def __init__(self) -> None:
         self.model = CHAT_MODEL
 
-    def complete(self, system: str, user: str) -> tuple[str, DoneInfo]:
+    def complete(self, system: str, messages: list[Message]) -> tuple[str, DoneInfo]:
         try:
             message = _get_client().messages.create(
                 model=CHAT_MODEL,
                 max_tokens=CHAT_MAX_TOKENS,
                 system=system,
-                messages=[{"role": "user", "content": user}],
+                messages=list(messages),
             )
         except Exception as exc:
             raise _wrap(exc) from exc
@@ -72,13 +72,13 @@ class AnthropicProvider:
             },
         )
 
-    def stream(self, system: str, user: str) -> Iterator[tuple[str, dict]]:
+    def stream(self, system: str, messages: list[Message]) -> Iterator[tuple[str, dict]]:
         try:
             with _get_client().messages.stream(
                 model=CHAT_MODEL,
                 max_tokens=CHAT_MAX_TOKENS,
                 system=system,
-                messages=[{"role": "user", "content": user}],
+                messages=list(messages),
             ) as stream:
                 for text in stream.text_stream:
                     yield ("delta", {"text": text})
