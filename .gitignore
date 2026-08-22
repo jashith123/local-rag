@@ -44,3 +44,6 @@ docker-compose.override.yml
 
 # Browser-automation artifacts (page snapshots, console logs)
 .playwright-mcp/
+
+# pytest
+.pytest_cache/

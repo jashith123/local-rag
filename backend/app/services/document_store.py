@@ -57,8 +57,16 @@ def get(document_id: str) -> Optional[DocumentMetadata]:
     return DocumentMetadata(**record) if record else None
 
 
-def find_by_hash(content_hash: str) -> Optional[DocumentMetadata]:
-    """Find an already-indexed document with identical bytes, if any."""
+def find_by_hash(content_hash: Optional[str]) -> Optional[DocumentMetadata]:
+    """Find an already-indexed document with identical bytes, if any.
+
+    A missing hash never matches. Documents indexed before deduplication
+    existed have `content_hash: None`, and treating that as a value would make
+    every one of them a duplicate of every other.
+    """
+    if not content_hash:
+        return None
+
     for record in _read_all().values():
         if record.get("content_hash") == content_hash:
             return DocumentMetadata(**record)
